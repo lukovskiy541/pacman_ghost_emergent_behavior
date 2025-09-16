@@ -20,6 +20,10 @@ typedef struct{
     SDL_Texture** textures; // Arr of textures of entity
     int textures_len;       // Size of arr of textures||
     
+    // Simple short-term memory (for non-player ghosts)
+    int last_seen_dir;      // Direction toward Pacman when last seen (-1 if none)
+    int last_seen_frames;   // How many frames to remember the last seen direction
+    
 } Entity;
 
 Entity* entity_new(const double pos_x, const double pos_y, const char type);

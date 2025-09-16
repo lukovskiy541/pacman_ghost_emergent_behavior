@@ -14,6 +14,8 @@ Entity* entity_new(const double pos_x, const double pos_y, const char type){
     entity->direction_next = entity->direction;
     entity->direction_wanted = -1;
     entity->textures_len = 0;
+    entity->last_seen_dir = -1;
+    entity->last_seen_frames = 0;
 
     if(type != 'p'){
         entity->textures = (SDL_Texture**)malloc(sizeof(SDL_Texture*) * 12);

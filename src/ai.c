@@ -189,7 +189,94 @@ void choose_way(Entity** entity, Levels** level, char to_left, char to_right, ch
 
     if( /* (*entity)->direction == (*entity)->direction_next && */
         !((fabs((*entity)->last_change_x - round((*entity)->pos_x)) < 0.00001) && (fabs((*entity)->last_change_y - round((*entity)->pos_y)) < 0.00001))){
-        choose_way_pom(entity, (*entity)->direction, to_left, to_right, to_up, to_down);
+        // Local, simple rules with N-cell vision to bias choices
+        if((*entity)->type != 'p'){
+            int current_level_index = (*level)->current_level;
+            int player_index = (*level)->pl_index[current_level_index];
+            Entity* player = (*level)->entities[current_level_index][player_index];
+
+            int ex = (int)round((*entity)->pos_x);
+            int ey = (int)round((*entity)->pos_y);
+            int px = (int)round(player->pos_x);
+            int py = (int)round(player->pos_y);
+
+            int vision_range = 6; // N cells
+            int charge = (*level)->charge_time; // 0 normal, 1 power-up
+
+            // Candidate directions and their passability
+            int dirs[4] = {0,1,2,3};
+            int passable[4] = { (to_left  != '#'), (to_right != '#'), (to_up    != '#'), (to_down  != '#' && to_down != '-') };
+
+            // Utilities initialized to small noise to avoid ties
+            double util[4] = { (rand()%3)*0.01, (rand()%3)*0.01, (rand()%3)*0.01, (rand()%3)*0.01 };
+
+            // Penalty for immediate reversal to reduce jitter
+            int opposite = ((*entity)->direction == 0) ? 1 : ((*entity)->direction == 1) ? 0 : ((*entity)->direction == 2) ? 3 : 2;
+            util[opposite] -= 0.05;
+
+            // Bias using N-cell straight-line vision
+            if(ex == px){
+                int dy = (py > ey) ? 1 : -1;
+                int steps = 0; int blocked = 0;
+                for(int y = ey + dy; y != py && steps < vision_range; y += dy, steps++){
+                    char cell = (*level)->maps[current_level_index][to_1d(ex, y, (*level)->maps_size_y[current_level_index])];
+                    if(cell == '#'){ blocked = 1; break; }
+                }
+                if(!blocked && steps <= vision_range){
+                    // Player within vision vertically
+                    int toward = (py < ey) ? 2 : 3;
+                    int away   = (py < ey) ? 3 : 2;
+                    util[toward] += (charge == 0) ? 1.0 : -1.0;
+                    util[away]   += (charge == 0) ? 0.0 : 0.5;
+                    // Update short-term memory
+                    (*entity)->last_seen_dir = toward;
+                    (*entity)->last_seen_frames = 2;
+                }
+            }
+            if(ey == py){
+                int dx = (px > ex) ? 1 : -1;
+                int steps = 0; int blocked = 0;
+                for(int x = ex + dx; x != px && steps < vision_range; x += dx, steps++){
+                    char cell = (*level)->maps[current_level_index][to_1d(x, ey, (*level)->maps_size_y[current_level_index])];
+                    if(cell == '#'){ blocked = 1; break; }
+                }
+                if(!blocked && steps <= vision_range){
+                    // Player within vision horizontally
+                    int toward = (px < ex) ? 0 : 1;
+                    int away   = (px < ex) ? 1 : 0;
+                    util[toward] += (charge == 0) ? 1.0 : -1.0;
+                    util[away]   += (charge == 0) ? 0.0 : 0.5;
+                    // Update short-term memory
+                    (*entity)->last_seen_dir = toward;
+                    (*entity)->last_seen_frames = 2;
+                }
+            }
+
+            // If Pacman not currently visible, bias by recent memory
+            if((*entity)->last_seen_frames > 0){
+                int mdir = (*entity)->last_seen_dir;
+                if(mdir >= 0 && mdir <= 3){
+                    util[mdir] += (charge == 0) ? 0.4 : -0.2; // small bias to keep moving toward last seen
+                }
+                (*entity)->last_seen_frames--;
+                if((*entity)->last_seen_frames == 0) (*entity)->last_seen_dir = -1;
+            }
+
+            // Prefer directions that are passable; heavily penalize non-passable
+            for(int i=0;i<4;i++){
+                if(!passable[i]) util[i] -= 100.0;
+            }
+
+            // Choose best utility among passable moves
+            int best_dir = (*entity)->direction;
+            double best_val = -1e9;
+            for(int i=0;i<4;i++){
+                if(util[i] > best_val){ best_val = util[i]; best_dir = i; }
+            }
+            (*entity)->direction_next = best_dir;
+        }else{
+            choose_way_pom(entity, (*entity)->direction, to_left, to_right, to_up, to_down);
+        }
     }
 
     // if((*entity)->type == 'p')

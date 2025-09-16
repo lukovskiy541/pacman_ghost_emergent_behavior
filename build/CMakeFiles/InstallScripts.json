@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/max/dev/Pacman/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
