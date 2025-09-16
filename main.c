@@ -28,6 +28,27 @@ int main(int argc, char** argv) {
     int levels_count = 4, coop = 0;
 
     //Args
+    for(int a=1;a<argc;a++){
+        if(strcmp(argv[a], "-h") == 0 || strcmp(argv[a], "--help") == 0){
+            printf("Usage: pacman [options] [coop] [move_speed] [levels_count] [debug]\n\n");
+            printf("Options (flags):\n");
+            printf("  -h, --help            Show this help and exit\n");
+            printf("  --vision=0|1         Enable/disable ghost line-of-sight to player (default 1)\n");
+            printf("  --gvision=0|1        Enable/disable ghost-vs-ghost avoidance (default 1, gated near spawn)\n");
+            printf("  --pher=0|1           Enable/disable pheromone gradient (default 1)\n");
+            printf("  -vision=0|1, -gvision=0|1, -pher=0|1 are also accepted\n\n");
+            printf("Positional (legacy, optional numeric):\n");
+            printf("  coop                 0 single player (default), 1 coop\n");
+            printf("  move_speed           Movement speed (default 4)\n");
+            printf("  levels_count         Number of levels to load (default 4)\n");
+            printf("  debug                0 normal (default), 1 verbose\n\n");
+            printf("In-game controls:\n");
+            printf("  SPACE start/pause, R restart, ESC pause\n");
+            printf("  Arrows move P1; WASD move P2 (coop)\n");
+            printf("  +/- change window scale, L next level (debug)\n");
+            return 0;
+        }
+    }
     get_args( argc, argv, &coop, &move_speed, &levels_count, &debug);
     
     SDL_Window * win = NULL;
@@ -44,6 +65,15 @@ int main(int argc, char** argv) {
     // Load Level
     Levels* my_levels = NULL;
     load_levels(&my_levels, levels_count, coop, debug);
+    // Parse optional AI feature toggles
+    for(int a=1;a<argc;a++){
+        int v;
+        if((v = parse_flag(argv[a], "--vision")) != -1 || (v = parse_flag(argv[a], "-vision")) != -1){ my_levels->ai_enable_vision = v ? 1 : 0; }
+        else if((v = parse_flag(argv[a], "--pher")) != -1 || (v = parse_flag(argv[a], "-pher")) != -1){ my_levels->ai_enable_pheromones = v ? 1 : 0; }
+        else if((v = parse_flag(argv[a], "--gvision")) != -1 || (v = parse_flag(argv[a], "-gvision")) != -1){ my_levels->ai_enable_ghost_vision = v ? 1 : 0; }
+    }
+    // Memory follows vision automatically
+    my_levels->ai_enable_memory = my_levels->ai_enable_vision;
     printf("Level Loaded\n");
 
     // Find Player Location in Level

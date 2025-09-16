@@ -51,7 +51,13 @@ void go_right(Entity** entity, Levels* level, const char to_left, const char to_
     (*entity)->pos_y = round((*entity)->pos_y);
 }
 void go_up(Entity** entity, Levels* level, const char to_left, const char to_right, const char to_up, const char to_down, const int scale, const int move_speed, const int animation_count, const int animation_freq){
-        if( to_up != '#' || ( (((int)(round(((*entity)->pos_y - (move_speed * (1 / (double)scale))) * 100))) >= (int)(round((*entity)->pos_y) * 100)) && to_up == '#')){
+        // Allow ghosts (non-player) to pass through pen door '-' above like empty space
+        int is_player_u = ((*entity)->type == 'p');
+        int is_wall_u = (to_up == '#');
+        int is_door_u = (to_up == '-');
+        int is_blocking_for_entity_u = is_wall_u || (is_player_u && is_door_u);
+
+        if( (!is_blocking_for_entity_u) || ( (((int)(round(((*entity)->pos_y - (move_speed * (1 / (double)scale))) * 100))) >= (int)(round((*entity)->pos_y) * 100)) && is_blocking_for_entity_u) ){
         if(level->charge_time == 0 || (*entity)->type == 'p'){
             if ((*entity)->type == 'p')
                 (*entity)->pos_y -= move_speed * (1 / (double)scale);
@@ -63,18 +69,24 @@ void go_up(Entity** entity, Levels* level, const char to_left, const char to_rig
         
         if(animation_count == animation_freq)
             entity_swap_style(entity);
-    }else if ( ( (((int)(round(((*entity)->pos_y - (move_speed * (1 / (double)scale))) * 100))) < (int)(round((*entity)->pos_y) * 100)) && to_up == '#') &&
+    }else if ( ( (((int)(round(((*entity)->pos_y - (move_speed * (1 / (double)scale))) * 100))) < (int)(round((*entity)->pos_y) * 100)) && (is_blocking_for_entity_u) ) &&
             ( ((int)(((*entity)->pos_y) * 100) > (int)(round((*entity)->pos_y) * 100)) ) ){
         (*entity)->pos_y = round((*entity)->pos_y);
         if(animation_count == animation_freq)
             entity_swap_style(entity);
-    }else if( (int)(*entity)->pos_y * 100 < (int)(round((*entity)->pos_y) * 100) && to_up == '#' ){
+    }else if( (int)(*entity)->pos_y * 100 < (int)(round((*entity)->pos_y) * 100) && (is_blocking_for_entity_u) ){
         (*entity)->pos_y = round((*entity)->pos_y);
     }
     (*entity)->pos_x = round((*entity)->pos_x);
 }
 void go_down(Entity** entity, Levels* level,const char to_left, const char to_right, const char to_up, const char to_down, const int scale, const int move_speed, const int animation_count, const int animation_freq){
-    if(((to_down != '#' && to_down != '-') || ( (((int)(round(((*entity)->pos_y + (move_speed * (1 / (double)scale))) * 100))) <= (int)(round((*entity)->pos_y) * 100))) && (to_down == '#' || to_down == '-'))){
+    // Allow ghosts (non-player) to pass through the pen door '-' like empty space
+    int is_player = ((*entity)->type == 'p');
+    int is_wall = (to_down == '#');
+    int is_door = (to_down == '-');
+    int is_blocking_for_entity = is_wall || (is_player && is_door);
+
+    if((!is_blocking_for_entity) || ( (((int)(round(((*entity)->pos_y + (move_speed * (1 / (double)scale))) * 100))) <= (int)(round((*entity)->pos_y) * 100)) && is_blocking_for_entity )){
         if(level->charge_time == 0 || (*entity)->type == 'p'){
             if ((*entity)->type == 'p')
                 (*entity)->pos_y += move_speed * (1 / (double)scale);
@@ -86,24 +98,18 @@ void go_down(Entity** entity, Levels* level,const char to_left, const char to_ri
         
         if(animation_count == animation_freq)
             entity_swap_style(entity);
-    }else if ( ( (((int)(round(((*entity)->pos_y + (move_speed * (1 / (double)scale))) * 100))) > (int)(round((*entity)->pos_y) * 100)) && (to_down == '#' || to_down == '-') ) &&
+    }else if ( ( (((int)(round(((*entity)->pos_y + (move_speed * (1 / (double)scale))) * 100))) > (int)(round((*entity)->pos_y) * 100)) && (is_blocking_for_entity) ) &&
             ( ((int)(((*entity)->pos_y) * 100) < (int)(round((*entity)->pos_y) * 100)) ) ){
         (*entity)->pos_y = round((*entity)->pos_y);
         
         if(animation_count == animation_freq)
             entity_swap_style(entity);
-    }else if( (int)(*entity)->pos_y * 100 < (int)(round((*entity)->pos_y) * 100) && (to_down == '#' || to_down == '-')){
+    }else if( (int)(*entity)->pos_y * 100 < (int)(round((*entity)->pos_y) * 100) && (is_blocking_for_entity)){
         (*entity)->pos_y = round((*entity)->pos_y);
     }
     (*entity)->pos_x = round((*entity)->pos_x);
 
-    if(to_down == '-'){
-        (*entity)->pos_y = round((*entity)->pos_y);
-        (*entity)->last_change_x = 0;
-        (*entity)->last_change_y = 0;
-        if((*entity)->type != 'p')
-            (*entity)->direction = rand() % 4; 
-    }
+    // No special door-side effects beyond passability
 }
 
 void choose_way_pom(Entity** entity, int way, char to_left, char to_right, char to_up, char to_down){
@@ -197,15 +203,22 @@ void choose_way(Entity** entity, Levels** level, char to_left, char to_right, ch
 
             int ex = (int)round((*entity)->pos_x);
             int ey = (int)round((*entity)->pos_y);
+            // (Removed) door-exit suppression state update
             int px = (int)round(player->pos_x);
             int py = (int)round(player->pos_y);
 
             int vision_range = 6; // N cells
             int charge = (*level)->charge_time; // 0 normal, 1 power-up
+            Uint32 now_ms = SDL_GetTicks();
 
             // Candidate directions and their passability
             int dirs[4] = {0,1,2,3};
-            int passable[4] = { (to_left  != '#'), (to_right != '#'), (to_up    != '#'), (to_down  != '#' && to_down != '-') };
+            int passable_down = (to_down != '#');
+            // Allow ghosts to pass through door '-' when moving down out of the pen
+            if((*entity)->type == 'p'){
+                passable_down = (to_down != '#' && to_down != '-');
+            }
+            int passable[4] = { (to_left  != '#'), (to_right != '#'), (to_up    != '#'), passable_down };
 
             // Utilities initialized to small noise to avoid ties
             double util[4] = { (rand()%3)*0.01, (rand()%3)*0.01, (rand()%3)*0.01, (rand()%3)*0.01 };
@@ -215,7 +228,8 @@ void choose_way(Entity** entity, Levels** level, char to_left, char to_right, ch
             util[opposite] -= 0.05;
 
             // Bias using N-cell straight-line vision
-            if(ex == px){
+            Uint32 memory_duration_ms = 1000; // short-term memory duration
+            if((*level)->ai_enable_vision && ex == px){
                 int dy = (py > ey) ? 1 : -1;
                 int steps = 0; int blocked = 0;
                 for(int y = ey + dy; y != py && steps < vision_range; y += dy, steps++){
@@ -230,10 +244,10 @@ void choose_way(Entity** entity, Levels** level, char to_left, char to_right, ch
                     util[away]   += (charge == 0) ? 0.0 : 0.5;
                     // Update short-term memory
                     (*entity)->last_seen_dir = toward;
-                    (*entity)->last_seen_frames = 2;
+                    (*entity)->last_seen_until_ms = now_ms + memory_duration_ms;
                 }
             }
-            if(ey == py){
+            if((*level)->ai_enable_vision && ey == py){
                 int dx = (px > ex) ? 1 : -1;
                 int steps = 0; int blocked = 0;
                 for(int x = ex + dx; x != px && steps < vision_range; x += dx, steps++){
@@ -248,18 +262,108 @@ void choose_way(Entity** entity, Levels** level, char to_left, char to_right, ch
                     util[away]   += (charge == 0) ? 0.0 : 0.5;
                     // Update short-term memory
                     (*entity)->last_seen_dir = toward;
-                    (*entity)->last_seen_frames = 2;
+                    (*entity)->last_seen_until_ms = now_ms + memory_duration_ms;
                 }
             }
 
             // If Pacman not currently visible, bias by recent memory
-            if((*entity)->last_seen_frames > 0){
+            if((*level)->ai_enable_memory && (*entity)->last_seen_until_ms > now_ms){
                 int mdir = (*entity)->last_seen_dir;
                 if(mdir >= 0 && mdir <= 3){
                     util[mdir] += (charge == 0) ? 0.4 : -0.2; // small bias to keep moving toward last seen
                 }
-                (*entity)->last_seen_frames--;
-                if((*entity)->last_seen_frames == 0) (*entity)->last_seen_dir = -1;
+            } else if((*entity)->last_seen_dir != -1){
+                (*entity)->last_seen_dir = -1;
+            }
+
+            // Removed door-specific biases; treat '-' as passable for ghosts only in movement
+
+            // Ghost-vs-ghost avoidance (enabled only outside spawn area)
+            if((*level)->ai_enable_ghost_vision){
+                // Only enable when sufficiently far from own spawn and not near door '-'
+                int spawn_x = (int)round((*entity)->start_pos_x);
+                int spawn_y = (int)round((*entity)->start_pos_y);
+                int dist_from_spawn = abs(ex - spawn_x) + abs(ey - spawn_y);
+                char here_cell2 = (*level)->maps[current_level_index][to_1d(ex, ey, (*level)->maps_size_y[current_level_index])];
+                int sy_sz = (*level)->maps_size_y[current_level_index];
+                int sx_sz = (*level)->maps_size_x[current_level_index];
+                int near_door = (here_cell2 == '-') || (to_down == '-') || (to_up == '-');
+                if(!near_door){
+                    for(int dy=-2; dy<=2 && !near_door; dy++){
+                        for(int dx=-2; dx<=2 && !near_door; dx++){
+                            if(abs(dx)+abs(dy) > 2) continue;
+                            int cx = ex + dx;
+                            int cy = ey + dy;
+                            if(cx<0||cy<0||cx>=sx_sz||cy>=sy_sz) continue;
+                            if((*level)->maps[current_level_index][to_1d(cx, cy, sy_sz)] == '-') near_door = 1;
+                        }
+                    }
+                }
+                if(dist_from_spawn > 3 && !near_door){
+                    int nents = (*level)->entities_len[current_level_index];
+                    for(int e = 0; e < nents; e++){
+                        if(e == player_index) continue;
+                        Entity* other = (*level)->entities[current_level_index][e];
+                        if(other == *entity) continue;
+                        if(other->type == 'p') continue;
+
+                        int ox = (int)round(other->pos_x);
+                        int oy = (int)round(other->pos_y);
+                        int blocked = 0;
+                        int steps = 0;
+                        if(oy == ey && ox != ex){
+                            int dx = (ox > ex) ? 1 : -1;
+                            for(int x = ex + dx; x != ox && steps < vision_range; x += dx, steps++){
+                                char cell = (*level)->maps[current_level_index][to_1d(x, ey, (*level)->maps_size_y[current_level_index])];
+                                if(cell == '#'){ blocked = 1; break; }
+                            }
+                            if(!blocked && steps <= vision_range){
+                                int away = (ox > ex) ? 0 : 1;
+                                util[away] += 0.5;
+                                int toward = (away == 0) ? 1 : 0;
+                                util[toward] -= 0.5;
+                                break;
+                            }
+                        } else if(ox == ex && oy != ey){
+                            int dy = (oy > ey) ? 1 : -1;
+                            for(int y = ey + dy; y != oy && steps < vision_range; y += dy, steps++){
+                                char cell = (*level)->maps[current_level_index][to_1d(ex, y, (*level)->maps_size_y[current_level_index])];
+                                if(cell == '#'){ blocked = 1; break; }
+                            }
+                            if(!blocked && steps <= vision_range){
+                                int away = (oy > ey) ? 2 : 3;
+                                util[away] += 0.5;
+                                int toward = (away == 2) ? 3 : 2;
+                                util[toward] -= 0.5;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ghost-vs-ghost repulsion removed entirely
+
+            // Pheromone gradient bias (attract to higher values unless power-up)
+            if((*level)->ai_enable_pheromones){
+                int cll = (*level)->current_level;
+                int gx = (int)round((*entity)->pos_x);
+                int gy = (int)round((*entity)->pos_y);
+                int sx = (*level)->maps_size_x[cll];
+                int sy = (*level)->maps_size_y[cll];
+                float* ph = (*level)->pheromone_player[cll];
+                float here = 0.0f;
+                if(gx>=0 && gy>=0 && gx<sx && gy<sy){ here = ph[to_1d(gx,gy,sy)]; }
+                float lv = 0.0f, rv = 0.0f, uv = 0.0f, dv = 0.0f;
+                if(gx-1>=0) lv = ph[to_1d(gx-1,gy,sy)] - here;
+                if(gx+1<sx) rv = ph[to_1d(gx+1,gy,sy)] - here;
+                if(gy-1>=0) uv = ph[to_1d(gx,gy-1,sy)] - here;
+                if(gy+1<sy) dv = ph[to_1d(gx,gy+1,sy)] - here;
+                float scale_bias = 0.2f * (charge==0 ? 1.0f : -1.0f);
+                util[0] += scale_bias * lv;
+                util[1] += scale_bias * rv;
+                util[2] += scale_bias * uv;
+                util[3] += scale_bias * dv;
             }
 
             // Prefer directions that are passable; heavily penalize non-passable

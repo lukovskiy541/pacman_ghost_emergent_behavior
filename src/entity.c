@@ -15,7 +15,9 @@ Entity* entity_new(const double pos_x, const double pos_y, const char type){
     entity->direction_wanted = -1;
     entity->textures_len = 0;
     entity->last_seen_dir = -1;
-    entity->last_seen_frames = 0;
+    entity->last_seen_until_ms = 0;
+
+    // removed avoidance suppression state
 
     if(type != 'p'){
         entity->textures = (SDL_Texture**)malloc(sizeof(SDL_Texture*) * 12);

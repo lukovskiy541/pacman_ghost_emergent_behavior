@@ -195,6 +195,44 @@ void change_level(SDL_Window* win, Levels** level, int* win_width, int* win_heig
 }
 
 void game_run(SDL_Renderer** ren, Levels** level, const int animation_count, const int animation_freq, const int pl_index, const int coop_pl_index, const int scale, const int move_scale, const double win_scale, const int debug){
+    // Pheromone evaporation and deposition (per current level)
+    int cl = (*level)->current_level;
+    Uint32 now_ms = SDL_GetTicks();
+    Uint32 last_ms = (*level)->pheromone_last_update_ms[cl];
+    if((*level)->pheromone_evap_ms > 0.0f && now_ms > last_ms){
+        float dt = (float)(now_ms - last_ms);
+        float k = dt / ((*level)->pheromone_evap_ms); // simple exponential factor
+        if(k > 0.0f){
+            int cells = (*level)->maps_size_x[cl] * (*level)->maps_size_y[cl];
+            float decay = 1.0f - (0.5f * k); // approximate; small dt → small decay
+            if(decay < 0.0f) decay = 0.0f;
+            if(decay > 1.0f) decay = 1.0f;
+            for(int ci=0; ci<cells; ci++){
+                (*level)->pheromone_player[cl][ci] *= decay;
+            }
+        }
+        (*level)->pheromone_last_update_ms[cl] = now_ms;
+    }
+    // Deposit pheromone at player positions
+    int p1_index = pl_index;
+    int p2_index = coop_pl_index;
+    if(p1_index >= 0){
+        int px = (int)round((*level)->entities[cl][p1_index]->pos_x);
+        int py = (int)round((*level)->entities[cl][p1_index]->pos_y);
+        if(px>=0 && py>=0 && px<(*level)->maps_size_x[cl] && py<(*level)->maps_size_y[cl]){
+            int pi = to_1d(px, py, (*level)->maps_size_y[cl]);
+            (*level)->pheromone_player[cl][pi] = fminf((*level)->pheromone_player[cl][pi] + 1.0f, 10.0f);
+        }
+    }
+    if((*level)->coop && p2_index >= 0){
+        int px = (int)round((*level)->entities[cl][p2_index]->pos_x);
+        int py = (int)round((*level)->entities[cl][p2_index]->pos_y);
+        if(px>=0 && py>=0 && px<(*level)->maps_size_x[cl] && py<(*level)->maps_size_y[cl]){
+            int pi = to_1d(px, py, (*level)->maps_size_y[cl]);
+            (*level)->pheromone_player[cl][pi] = fminf((*level)->pheromone_player[cl][pi] + 1.0f, 10.0f);
+        }
+    }
+
     for (int i = 0; i < (*level)->entities_len[(*level)->current_level]; i++){
         Entity* entity = (*level)->entities[(*level)->current_level][i];
         int entity_pos_x = (int)round(entity->pos_x);
@@ -372,5 +410,13 @@ void load_levels(Levels** levels, const int levels_count, const int coop, const 
         
         fclose(file);
         (*levels)->maps[lc] = level_map;
+
+        // Allocate pheromone grid for this level and zero it
+        int cells = (*levels)->maps_size_x[lc] * (*levels)->maps_size_y[lc];
+        (*levels)->pheromone_player[lc] = (float*)malloc(sizeof(float) * cells);
+        for(int i=0;i<cells;i++){ (*levels)->pheromone_player[lc][i] = 0.0f; }
+        (*levels)->pheromone_last_update_ms[lc] = SDL_GetTicks();
     }
+    // Configure evaporation characteristic time (~half-life style)
+    (*levels)->pheromone_evap_ms = 5000.0f; // target time scale for evaporation
 }

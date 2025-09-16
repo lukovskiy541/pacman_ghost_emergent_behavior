@@ -39,6 +39,18 @@ Levels* levels_new( const int maps_len, const int textures_len, const int fonts_
 
     level->game_running = 0;
     level->game_win = 0;  
+
+    // Pheromones init (allocated after maps are loaded)
+    level->pheromone_player = (float**)malloc(sizeof(float*) * maps_len);
+    level->pheromone_last_update_ms = (Uint32*)malloc(sizeof(Uint32) * maps_len);
+    for(int i=0;i<maps_len;i++){ level->pheromone_player[i] = NULL; level->pheromone_last_update_ms[i] = 0; }
+    level->pheromone_evap_ms = 0.0f; // will be configured on load
+
+    // AI toggles default
+    level->ai_enable_vision = 1;
+    level->ai_enable_memory = 1;
+    level->ai_enable_pheromones = 1;
+    level->ai_enable_ghost_vision = 1;
 }
 
 void levels_free(Levels** level){
@@ -52,6 +64,9 @@ void levels_free(Levels** level){
         }
         free((*level)->entities[lc]);
         free((*level)->maps[lc]);
+        if((*level)->pheromone_player && (*level)->pheromone_player[lc]){
+            free((*level)->pheromone_player[lc]);
+        }
     }
     free((*level)->entities);
     free((*level)->entities_len);
@@ -69,6 +84,8 @@ void levels_free(Levels** level){
     free((*level)->maps_size_x);
     free((*level)->maps_size_y);
     free((*level)->textures);
+    if((*level)->pheromone_player) free((*level)->pheromone_player);
+    if((*level)->pheromone_last_update_ms) free((*level)->pheromone_last_update_ms);
     free((*level));
     (*level) = NULL;
 }

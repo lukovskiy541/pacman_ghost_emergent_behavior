@@ -33,6 +33,17 @@ typedef struct{
     int coop;
     int* coop_pl_index;
     int* pl_index;
+
+    // Pheromone fields per level (2D stored as 1D arrays)
+    float** pheromone_player;   // attraction to Pacman (deposited by Pacman)
+    float pheromone_evap_ms;    // evaporation interval in ms
+    Uint32* pheromone_last_update_ms; // per-level last evaporation timestamp
+
+    // AI feature toggles
+    int ai_enable_vision;       // 1 to use line-of-sight chasing
+    int ai_enable_memory;       // 1 to use short-term memory bias
+    int ai_enable_pheromones;   // 1 to use pheromone gradient
+    int ai_enable_ghost_vision; // 1 to avoid other ghosts on LOS
 } Levels;
 
 Levels* levels_new( const int maps_len, const int textures_len, const int fonts_len);

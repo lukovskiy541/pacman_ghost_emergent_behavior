@@ -21,8 +21,10 @@ typedef struct{
     int textures_len;       // Size of arr of textures||
     
     // Simple short-term memory (for non-player ghosts)
-    int last_seen_dir;      // Direction toward Pacman when last seen (-1 if none)
-    int last_seen_frames;   // How many frames to remember the last seen direction
+    int last_seen_dir;          // Direction toward Pacman when last seen (-1 if none)
+    Uint32 last_seen_until_ms;  // Timestamp (SDL_GetTicks) until which the memory is valid
+    
+    // (Removed) avoidance suppression fields
     
 } Entity;
 
