@@ -2124,6 +2124,7 @@ pacman
  /usr/lib/libc.so.6
  /usr/lib/libc_nonshared.a
  /usr/lib/libdav1d.so.7
+ /usr/lib/libdeflate.so.0
  /usr/lib/libfreetype.so.6
  /usr/lib/libglib-2.0.so.0
  /usr/lib/libgraphite2.so.3

@@ -57,9 +57,10 @@ pacman: \
   /usr/lib32/libstdc++.so.6 \
   /usr/lib/libstdc++.so.6 \
   /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/libgcc_s.so.1 \
-  /usr/lib/libzstd.so.1 \
-  /usr/lib/liblzma.so.5 \
+  /usr/lib/libdeflate.so.0 \
   /usr/lib/libjbig.so.2.1 \
+  /usr/lib/liblzma.so.5 \
+  /usr/lib/libzstd.so.1 \
   /usr/lib/libyuv.so \
   /usr/lib/libsharpyuv.so.0 \
   /usr/lib/libdav1d.so.7 \
@@ -188,11 +189,13 @@ CMakeFiles/pacman.dir/src/game.c.o:
 
 /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/../../../../lib/libgcc_s.so.1:
 
-/usr/lib/libzstd.so.1:
+/usr/lib/libdeflate.so.0:
+
+/usr/lib/libjbig.so.2.1:
 
 /usr/lib/liblzma.so.5:
 
-/usr/lib/libjbig.so.2.1:
+/usr/lib/libzstd.so.1:
 
 /usr/lib/libyuv.so:
 

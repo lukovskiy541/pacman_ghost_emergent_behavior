@@ -2115,6 +2115,7 @@ pacman: /usr/lib/Scrt1.o \
   /usr/lib/libc.so.6 \
   /usr/lib/libc_nonshared.a \
   /usr/lib/libdav1d.so.7 \
+  /usr/lib/libdeflate.so.0 \
   /usr/lib/libfreetype.so.6 \
   /usr/lib/libglib-2.0.so.0 \
   /usr/lib/libgraphite2.so.3 \
@@ -2250,6 +2251,8 @@ CMakeFiles/pacman.dir/main.c.o:
 /usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include/popcntintrin.h:
 
 /usr/include/SDL2/SDL_keycode.h:
+
+/usr/lib/libdeflate.so.0:
 
 /usr/include/bits/timesize.h:
 
